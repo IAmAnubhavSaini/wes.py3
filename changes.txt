@@ -1,3 +1,11 @@
+2021.10.14 0006
+
+- Cleanup
+- Removed CSV related code a little.
+- Removed a massive header, please see it in windows-exploit-suggester.py
+- Using 4 spaces for indentation
+
+
 2021.10.13 2354
 
 - imported urllib.error
