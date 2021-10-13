@@ -7,8 +7,8 @@ windows-exploit-suggester but in python3
 As of right now, tool is writing .xlsx file, which needs to be converted to .csv and then to .xls for consumption again by the tool
 
 ```shell
-sscovert file.xlsx file.csv
-sscovert file.csv file.xls
+ssconvert file.xlsx file.csv
+ssconvert file.csv file.xls
 ```
 
 Now you can use the script:
