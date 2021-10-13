@@ -1,3 +1,10 @@
+2021.10.14 0127
+
+- Cleanup
+- Deleted windows-exploit-suggester.py as it was coming in way of grep
+- Introduced .gitignore
+
+
 2021.10.14 0006
 
 - Cleanup

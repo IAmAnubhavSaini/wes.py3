@@ -381,7 +381,7 @@ def run(database):
                         hotfix, kb, bulletinid, componentkb))
 
                 # get the linked ms, this will automatically calculate the superseded by as well
-                linkedms = getlinkedms([bulletinid], csv.reader(StringIO.StringIO(database)))
+                linkedms = get_linked_ms([bulletinid], csv.reader(StringIO(database)))
                 linkedmsstr = ''
 
                 # calculate the pretty string, only care when verbose
@@ -412,7 +412,7 @@ def run(database):
 
             if bulletinid in bulletinids and not "elevation of privilege" in impact.lower():
 
-                remove = getlinkedms([bulletinid], csv.reader(StringIO.StringIO(database)))
+                remove = get_linked_ms([bulletinid], csv.reader(StringIO(database)))
 
                 if ARGS.verbose:
                     ALERT("   removing %s (total of %s MS ids), because of its impact %s" % (
@@ -430,7 +430,7 @@ def run(database):
 
             if bulletinid in bulletinids and not "remote code execution" in impact.lower():
 
-                remove = getlinkedms([bulletinid], csv.reader(StringIO.StringIO(database)))
+                remove = get_linked_ms([bulletinid], csv.reader(StringIO(database)))
 
                 if ARGS.verbose:
                     ALERT("   removing %s (total of %s MS ids), because of its impact %s" % (
@@ -513,7 +513,7 @@ def run(database):
                 if ARGS.sub:
 
                     # linked ms, the children of this msid
-                    linked = set(getlinkedms([msid], csv.reader(StringIO.StringIO(database))))
+                    linked = set(get_linked_ms([msid], csv.reader(StringIO(database))))
                     linked = linked.intersection(msids)
 
                     # loop through the linked msids, and only display those that qualify and
@@ -555,7 +555,7 @@ def trace(database):
     ALERT("searching for bulletin id %s" % bulletinid)
 
     # get linked msids
-    lmsids = getlinkedms([bulletinid], csv.reader(StringIO.StringIO(database)))
+    lmsids = get_linked_ms([bulletinid], csv.reader(StringIO(database)))
 
     msids = []
 
@@ -579,7 +579,7 @@ def trace(database):
             exit(1)
 
         # get linked msids, loop through the row
-        for row in csv.reader(StringIO.StringIO(database)):
+        for row in csv.reader(StringIO(database)):
             msid = row[1]
             affected = row[6]
 
@@ -605,7 +605,7 @@ def patches(database):
     ALERT("searching all kb's for bulletin id %s" % bulletinid)
 
     # get linked msids, loop through the row
-    for row in csv.reader(StringIO.StringIO(database)):
+    for row in csv.reader(StringIO(database)):
 
         bulletinkb = row[2]
         componentkb = row[7]
@@ -763,10 +763,11 @@ def getpatch(ostext):
 #   MS14-009[2898860]
 #   MS13-052[2833940],MS14-009[2898856]
 # will return a list if found, otherwise false
-def getbulletinids(haystack):
+def get_bulletin_ids(haystack):
     regex = "MS[\d]{2,3}-[\d]{2,3}"
     m = re.findall(regex, haystack)
-    if len(m) > 0: return m
+    if len(m) > 0:
+        return m
     return False
 
 
@@ -776,12 +777,12 @@ def isaffected(name, release, servicepack, architecture, haystack):
         # ensure None are set to False
         # example, if getservicepack() does not get called in the systeminfo parsing
         # then servicepack will be None. this will then fail when comparing to False.
-        if release == None: release = False
-        if servicepack == None: servicepack = False
-        if architecture == None: architecture = False
-
-        #    print "%s,%s,%s,%s" % (name, release, servicepack, architecture)
-        #    print "%s,%s,%s,%s" % (getname(haystack),getrelease(haystack),getservicepack(haystack),getarchitecture(haystack))
+        if release == None:
+            release = False
+        if servicepack == None:
+            servicepack = False
+        if architecture == None:
+            architecture = False
 
         n = (name == getname(haystack))
         r = (release == getrelease(haystack))
@@ -789,17 +790,16 @@ def isaffected(name, release, servicepack, architecture, haystack):
         a = (architecture == getarchitecture(haystack))
 
         # we ignore the architecture for 2012 servers, as there is only 64-bit
-        if name == "2012": return r and s
-
-        #    print "%s,%s,%s,%s,%s" % (name, release, servicepack, architecture, (a and r and s))
+        if name == "2012":
+            return r and s
 
         return a and r and s
 
 
 # search entire database for linked msids
 # this will also search the superseded column (11)
-def getlinkedms(msids, database):
-    lmsids = []
+def get_linked_ms(ms_ids, database):
+    ms_id_list = []
 
     # go through each row in the database
     for row in database:
@@ -809,142 +809,29 @@ def getlinkedms(msids, database):
 
         # superseded MS-XX
 
+        # @TODO check if it can be removed or simplified.
         # first try row 12, and then row 11 for the supercedes column due to
         # differences in csv and xlrd parsing. this was a bug that might be
         # fixed now
-        rowidsuper = getbulletinids(row[12])
-        if rowidsuper == False: rowidsuper = getbulletinids(row[11])
+        bulletin_ids = get_bulletin_ids(row[12])
+        if not bulletin_ids:
+            bulletin_ids = get_bulletin_ids(row[11])
 
-        rowidsuper = merge_list(rowidsuper)
+        bulletin_ids = merge_list(bulletin_ids)
 
         # loop through each msid for each row
-        for msid in msids:
+        for ms_id in ms_ids:
+            # if the ms_id matches the row, get the supercedes column (which is a list)
+            if ms_id == rowid or rowid in ms_id_list:
+                ms_id_list.append(ms_id)
+                ms_id_list = ms_id_list + bulletin_ids
 
-            # debug output, what we're working with
-            # print "%s,%s,%s" % (msid, rowid, rowidsuper)
-            # MS14-053,MS14-053,['MS13-052', 'MS14-009']
-            # MS14-053,MS14-053,['MS13-004']
-            # MS14-053,MS14-053,['MS13-004']
-            # MS14-053,MS14-053,['MS13-004']
-            # MS14-053,MS14-053,['MS13-004']
-            # MS14-053,MS14-053,[]
-
-            # if the msid matches the row, get the supercedes column (which is a list)
-            if msid == rowid or rowid in lmsids:
-                # print "%s,%s,%s" % (msid, rowid, rowidsuper)
-                lmsids.append(msid)
-                lmsids = lmsids + rowidsuper
-
-    return sorted(set(lmsids), reverse=True)
+    return sorted(set(ms_id_list), reverse=True)
 
 
 # determines whether or not an msid is in a list of exploits. if msid = 0
 # then it will just return the count
 def getexploit(msid=0):
-    # search using searchsploit
-    # MS Windows (ListBox/ComboBox Control) Local Exploit (MS03-045)        /windows/local/122.c
-    # MS Windows Utility Manager Local SYSTEM Exploit (MS04-011)          /windows/local/271.c
-    # MS Windows 2000 Utility Manager Privilege Elevation Exploit (MS04-019)    /windows/local/350.c
-    # MS Windows 2K POSIX Subsystem Privilege Escalation Exploit (MS04-020)     /windows/local/351.c
-    # MS Windows 2000 Universal Language Utility Manager Exploit (MS04-019)     /windows/local/352.c
-    # MS Windows 2K/XP Task Scheduler .job Exploit (MS04-022)           /windows/local/353.c
-    # MS Windows 2k Utility Manager (All-In-One) Exploit (MS04-019)         /windows/local/355.c
-    # MS Windows XP Task Scheduler (.job) Universal Exploit (MS04-022)      /windows/local/368.c
-    # MS Windows (HTA) Script Execution Exploit (MS05-016)            /windows/local/938.cpp
-    # MS Windows COM Structured Storage Local Exploit (MS05-012)          /windows/local/1019.c
-    # MS Windows CSRSS Local Privilege Escalation Exploit (MS05-018)        /windows/local/1198.c
-    # MS Windows 2k Kernel APC Data-Free Local Escalation Exploit (MS05-055)    /windows/local/1407.c
-    # MS Windows Telephony Service Command Execution Exploit (MS05-040)       /windows/local/1584.cpp
-    # MS Windows (NtClose DeadLock) Vulnerability PoC (MS06-030)          /windows/local/1910.c
-    # MS Windows XP/2K (Mrxsmb.sys) Privilege Escalation PoC (MS06-030)       /windows/local/1911.c
-    # Microsoft IIS ASP Stack Overflow Exploit (MS06-034)             /windows/local/2056.c
-    # MS Windows (Windows Kernel) Privilege Escalation Exploit (MS06-049)     /windows/local/2412.c
-    # MS Windows GDI Local Privilege Escalation Exploit (MS07-017)        /windows/local/3688.c
-    # MS Windows GDI Local Privilege Escalation Exploit (MS07-017) 2        /windows/local/3755.c
-    # Kodak Image Viewer TIF/TIFF Code Execution Exploit PoC (MS07-055)       /windows/local/4584.c
-    # Microsoft Office .WPS File Stack Overflow Exploit (MS08-011)        /windows/local/5107.c
-    # Microsoft Office Excel Code Execution Exploit (MS08-014)          /windows/local/5287.txt
-    # Microsoft Office XP SP3 PPT File Buffer Overflow Exploit (ms08-016)     /windows/local/5320.txt
-    # MS Windows GDI Image Parsing Stack Overflow Exploit (MS08-021)        /windows/local/5442.cpp
-
-    # MS Word Record Parsing Buffer Overflow (MS09-027)               /windows/local/14693.py
-    # MS Excel Malformed FEATHEADER Record Exploit (MS09-067)           /windows/local/14706.py
-    # MS Word Record Parsing Buffer Overflow MS09-027 (meta)            /windows/local/17177.rb
-    # MS Internet Explorer Object Tag Exploit (MS03-020)              /windows/remote/37.pl
-    # MS Windows Media Services Remote Exploit (MS03-022)             /windows/remote/48.c
-    # Microsoft WordPerfect Document Converter Exploit (MS03-036)         /windows/remote/92.c
-    # MS Windows (RPC DCOM) Scanner (MS03-039)                  /windows/remote/97.c
-    # MS Windows (RPC DCOM) Long Filename Overflow Exploit (MS03-026)       /windows/remote/100.c
-    # MS Windows (RPC DCOM2) Remote Exploit (MS03-039)              /windows/remote/103.c
-    # MS Windows (RPC2) Universal Exploit & DoS (RPC3) (MS03-039)         /windows/remote/109.c
-    # MS Windows 2000/XP Workstation Service Overflow (MS03-049)          /windows/remote/119.c
-    # MS Frontpage Server Extensions fp30reg.dll Exploit (MS03-051)         /windows/remote/121.c
-    # MS Windows Workstation Service WKSSVC Remote Exploit (MS03-049)       /windows/remote/123.c
-    # MS Windows XP Workstation Service Remote Exploit (MS03-049)         /windows/remote/130.c
-    # MS Windows Messenger Service Remote Exploit FR (MS03-043)           /windows/remote/135.c
-    # MS Internet Explorer URL Injection in History List (MS04-004)         /windows/remote/151.txt
-    # MS Windows IIS 5.0 SSL Remote buffer overflow Exploit (MS04-011)      /windows/remote/275.c
-    # MS Windows Lsasrv.dll RPC Remote Buffer Overflow Exploit (MS04-011)     /windows/remote/293.c
-    # MS Windows XP/2K Lsasrv.dll Remote Universal Exploit (MS04-011)       /windows/remote/295.c
-    # MS Windows JPEG GDI+ Overflow Administrator Exploit (MS04-028)        /windows/remote/475.sh
-    # MS Windows JPEG GDI+ Overflow Download Shellcode Exploit (MS04-028)     /windows/remote/478.c
-    # MS Windows JPEG GDI+ Remote Heap Overflow Exploit (MS04-028)        /windows/remote/480.c
-    # MS Windows Metafile (.emf) Heap Overflow Exploit (MS04-032)         /windows/remote/584.c
-    # MS Windows Compressed Zipped Folders Exploit (MS04-034)           /windows/remote/640.c
-    # MS Windows NetDDE Remote Buffer Overflow Exploit (MS04-031)         /windows/remote/734.c
-    # MS Internet Explorer .ANI files handling Universal Exploit (MS05-002)     /windows/remote/765.c
-    # MS Internet Explorer .ANI files handling Downloader Exploit (MS05-002)    /windows/remote/771.cpp
-    # MS Exchange Server Remote Code Execution Exploit (MS05-021)         /windows/remote/947.pl
-    # MS Outlook Express NNTP Buffer Overflow Exploit (MS05-030)          /windows/remote/1066.cpp
-    # MS Windows Message Queuing BoF Universal Exploit (MS05-017) (v.0.3)     /windows/remote/1075.c
-    # MS Internet Explorer (blnmgr.dll) COM Object Remote Exploit (MS05-038)    /windows/remote/1144.html
-    # MS Windows Plug-and-Play Service Remote Overflow (MS05-039)         /windows/remote/1146.c
-    # MS Windows Plug-and-Play Service Remote  Universal Exploit (MS05-039)     /windows/remote/1149.c
-    # Microsoft Windows DTC Remote Exploit (PoC) (MS05-051) (updated)       /windows/remote/1352.cpp
-    # Windows Media Player 7.1 <= 10 BMP Heap Overflow PoC (MS06-005) (2)     /windows/remote/1502.py
-    # MS Windows Media Player 9 Plugin Overflow Exploit (MS06-006) (meta)     /windows/remote/1504.pm
-    # MS Windows Media Player 10 Plugin Overflow Exploit (MS06-006)         /windows/remote/1505.html
-    # MS Windows Color Management Module Overflow Exploit (MS05-036) (2)      /windows/remote/1506.c
-    # MS Windows Media Player Plugin Overflow Exploit (MS06-006)(3)         /windows/remote/1520.pl
-    # MS Windows RRAS Remote Stack Overflow Exploit (MS06-025)          /windows/remote/1940.pm
-    # MS Windows RRAS RASMAN Registry Stack Overflow Exploit (MS06-025)       /windows/remote/1965.pm
-    # MS Internet Explorer (MDAC) Remote Code Execution Exploit (MS06-014)    /windows/remote/2052.sh
-    # MS Windows DHCP Client Broadcast Attack Exploit (MS06-036)          /windows/remote/2054.txt
-    # MS Windows NetpIsRemote() Remote Overflow Exploit (MS06-040)        /windows/remote/2162.pm
-    # Internet Explorer (MDAC) Remote Code Execution Exploit (MS06-014) (2)     /windows/remote/2164.pm
-    # MS Windows CanonicalizePathName() Remote Exploit (MS06-040)         /windows/remote/2223.c
-    # MS Windows NetpIsRemote() Remote Overflow Exploit (MS06-040) (2)      /windows/remote/2265.c
-    # MS Windows NetpIsRemote() Remote Overflow Exploit (MS06-040) (2k3)      /windows/remote/2355.pm
-    # MS Windows NetpManageIPCConnect Stack Overflow Exploit (MS06-070)       /windows/remote/2789.cpp
-    # MS Windows Wkssvc NetrJoinDomain2 Stack Overflow Exploit (MS06-070)     /windows/remote/2800.cpp
-    # MS Windows ASN.1 Remote Exploit (MS04-007)                  /windows/remote/3022.txt
-    # MS Internet Explorer VML Remote Buffer Overflow Exploit (MS07-004)      /windows/remote/3137.html
-    # MS Internet Explorer VML Download and Execute Exploit (MS07-004)      /windows/remote/3148.pl
-    # MS Internet Explorer Recordset Double Free Memory Exploit (MS07-009)    /windows/remote/3577.html
-    # MS Windows (.ANI) GDI Remote Elevation of Privilege Exploit (MS07-017)    /windows/remote/3804.txt
-    # MS Internet Explorer <= 7 Remote Arbitrary File Rewrite PoC (MS07-027)    /windows/remote/3892.html
-    # Microsoft Internet Explorer TIF/TIFF Code Execution (MS07-055)        /windows/remote/4616.pl
-    # MS Windows Message Queuing Service RPC BOF Exploit (MS07-065)         /windows/remote/4745.cpp
-    # MS Windows 2000 AS SP4 Message Queue Exploit (MS07-065)           /windows/remote/4760.txt
-    # Windows Media Encoder wmex.dll ActiveX BOF Exploit (MS08-053)         /windows/remote/6454.html
-    # MS Windows GDI (EMR_COLORMATCHTOTARGETW) Exploit MS08-021           /windows/remote/6656.txt
-    # MS Windows Server Service Code Execution Exploit (MS08-067) (Univ)      /windows/remote/6841.txt
-    # MS Windows Server Service Code Execution Exploit (MS08-067)         /windows/remote/7104.c
-    # SmbRelay3 NTLM Replay Attack Tool/Exploit (MS08-068)            /windows/remote/7125.txt
-    # MS Windows Server Service Code Execution Exploit (MS08-067) (2k/2k3)    /windows/remote/7132.py
-    # Microsoft XML Core Services DTD Cross-Domain Scripting PoC MS08-069     /windows/remote/7196.html
-    # MS Internet Explorer 7 Memory Corruption Exploit (MS09-002) (xp sp2)    /windows/remote/8079.html
-    # MS Internet Explorer 7 Memory Corruption Exploit (MS09-002) (py)      /windows/remote/8080.py
-    # MS Internet Explorer 7 Memory Corruption PoC (MS09-002) (win2k3sp2)     /windows/remote/8082.html
-    # MS Internet Explorer 7 Memory Corruption Exploit (MS09-002) (fast)      /windows/remote/8152.py
-    # Microsoft SRV2.SYS SMB Negotiate ProcessID Function Table Dereference (MS09-050) /windows/remote/14674.txt
-    # Microsoft Services MS06-066 nwwks.dll                     /windows/remote/16369.rb
-    # Microsoft Services MS06-066 nwapi32.dll                   /windows/remote/16373.rb
-    # MS03-020 Internet Explorer Object Type                    /windows/remote/16581.rb
-    # MS03-046 Exchange 2000 XEXCH50 Heap Overflow                /windows/remote/16820.rb
-
-    # no ms number yet?
-    # MS??-???,http://www.exploit-db.com/exploits/30014/,P,??2914486
     # bulletin, type, details
     exploits = [
 
@@ -1198,7 +1085,8 @@ def getexploit(msid=0):
     ]
 
     # return the count of exploits
-    if msid == 0: return len(exploits)
+    if msid == 0:
+        return len(exploits)
 
     for exploit in exploits:
         if msid == exploit[0]:
@@ -1217,8 +1105,7 @@ def getexploit(msid=0):
 def update():
     # compute the filenames to be used
     filenames = '%s-mssb' % datetime.datetime.now().strftime('%Y-%m-%d')
-    xlsFile = '%s.%s' % (filenames, 'xlsx')
-    csvFile = '%s.%s' % (filenames, 'csv')
+    xls_file = '%s.%s' % (filenames, 'xlsx')
 
     # url request opener with user-agent
     opener = urllib.request.build_opener()
@@ -1253,6 +1140,7 @@ def update():
     #  exit(1)
 
     # now download the mssb file, with a random sleep
+    response = None
     try:
         # sleep(randint(1,3))
         response = opener.open(bulletinUrl)
@@ -1260,11 +1148,11 @@ def update():
         ALERT("error getting ms sb url %s" % bulletinUrl, ALERT.BAD)
         exit(1)
 
-    bulletinData = response.read()
+    bulletin_data = response.read()
 
-    ALERT("writing to file %s" % xlsFile, ALERT.GOOD)
-    f = open(xlsFile, 'wb')
-    f.write(bulletinData)
+    ALERT("writing to file %s" % xls_file, ALERT.GOOD)
+    f = open(xls_file, 'wb')
+    f.write(bulletin_data)
     f.close
 
 
@@ -1274,7 +1162,8 @@ class ALERT(object):
     def __init__(self, message, level=0, ansi=True):
 
         # default to ansi alerting, if it's detected as windows platform then disable
-        if platform.system() == "Windows": ansi = False
+        if platform.system() == "Windows":
+            ansi = False
 
         good = '[+]'
         bad = '[-]'
@@ -1283,7 +1172,7 @@ class ALERT(object):
         msf = '[M]'
         exploit = '[E]'
 
-        if ansi == True:
+        if ansi:
             if level == ALERT.GOOD:
                 print("%s%s%s" % ('\033[1;32m', good, "\033[0;0m"), end=''),
             elif level == ALERT.BAD:
@@ -1336,14 +1225,14 @@ class ALERT(object):
 
 
 # this helper function will merge a list of lists into one sorted set
-def merge_list(li):
+def merge_list(items):
     s = []
-    if li:
-        for l in li:
-            if isinstance(l, list):
-                s = s + l
+    if items:
+        for item in items:
+            if isinstance(item, list):
+                s = s + item
             else:
-                s.append(l)
+                s.append(item)
     return s
 
 
