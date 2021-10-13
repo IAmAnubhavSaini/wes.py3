@@ -50,7 +50,8 @@
 #
 # install dependencies
 #
-# (install python-xlrd, $ pip install xlrd --upgrade)
+# (install xlrd, $ pip install xlrd --upgrade)
+# (install openpyxl (that's an el); $ pip3 install openpyxl
 #
 # feed it "systeminfo" input, and point it to the microsoft database
 #
@@ -96,28 +97,10 @@
 # [M] MS09-072: Cumulative Security Update for Internet Explorer (976325) - Critical
 #
 # TROUBLESHOOTING
-#
-# If you're receiving the following error message, update the xlrd library
-# $ pip install xlrd --update
-#
-# [*] initiating winsploit version 24...
-# [*] database file detected as xls or xlsx based on extension
-# Traceback (most recent call last):
-# 	  File "windows-exploit-suggester/windows-exploit-suggester.py", line 1414, in <module>
-# 	      main()
-# 	        File "windows-exploit-suggester/windows-exploit-suggester.py", line 354, in main
-# 		    wb = xlrd.open_workbook(ARGS.database)
-# 		      File "/usr/lib/pymodules/python2.7/xlrd/__init__.py", line 370, in open_workbook
-# 		          biff_version = bk.getbof(XL_WORKBOOK_GLOBALS)
-# 			    File "/usr/lib/pymodules/python2.7/xlrd/__init__.py", line 1323, in getbof
-# 			        raise XLRDError('Expected BOF record; found 0x%04x' % opcode)
-# 			xlrd.biffh.XLRDError: Expected BOF record; found 0x4b50
-#
-# LIMITATIONS
-#
+
 # Currently, if the 'systeminfo' command reveals 'File 1' as the output for
 # the hotfixes, it will not be able to determine which are installed on
-# the target. If this occurs, the list of hotfixes will need to be 
+# the target. If this occurs, the list of hotfixes will need to be
 # retrieved from the target host and passed in using the --hotfixes flag
 #
 # It currently does not seperate 'editions' of the Windows OS such as
@@ -173,7 +156,7 @@
 #
 # v31 2016-02-10
 # - changed bulletin url, microsoft 404'd it
-#	
+#
 # v30 2016-01-04
 # - added exploits and bulletins from the past six months
 #
@@ -200,7 +183,7 @@
 #
 # v24 2015-01-30
 # - added --sub/-s command in order to display output of msids as linked
-#   this aides in demonstrating what patches need to be applied precisely. 
+#   this aides in demonstrating what patches need to be applied precisely.
 #   this change was implemented in v23, but only followed the depth to level
 #   1 instead of the entire way.
 # - fixed a bug that know allows for multiple supercedes msids in the db
@@ -209,19 +192,19 @@
 # - added ms14-070
 #
 # v23 2015-01-26
-# - typo in --local flag case (pontential vs potential). issue #5 closed. 
+# - typo in --local flag case (pontential vs potential). issue #5 closed.
 #
 # v22 2015-01-23
 # - speed optimisations! it was too slow beforehand. realised i could easily
 #   make it a bit more efficient
-# 
+#
 # v21 2015-01-22
 # - changed display formatting to include nested/linked MS numbers. makes it
 #   easier to determine the dependencies
 # - made args global
 # - changed some code formatting, including double-space instead of \t
 # - added some additional comments
-# - disable ANSI output if on windows platform 
+# - disable ANSI output if on windows platform
 # - added recent exploits
 #
 # v20 2014-12-16
@@ -239,7 +222,7 @@
 #   before search string
 #
 # v16 2014-07-28
-# - improved reading of various file encodings for systeminfo. now attempts to 
+# - improved reading of various file encodings for systeminfo. now attempts to
 #   detect the file first, otherwise loops through common encodings
 # - improved OS, service pack, architecture, and release detection. this is now
 #   not English-dependent as it was previously
@@ -311,7 +294,7 @@
 # def patches(database):
 # def getversion(name, release, servicepack, architecture):
 # def getname(ostext):
-# def getrelease(ostext):    
+# def getrelease(ostext):
 # def getservicepack(ostext):
 # def getarchitecture(ostext):
 # def getitanium(ostext):
@@ -439,7 +422,7 @@ def main():
 
         data += ",".join(values)
         data += '\n'
-  
+
       # set the database to the csv data
       database = data
 
@@ -468,7 +451,7 @@ def run(database):
   name=None
   release=None
   servicepack=None
-    
+
   # will default to 32-bit, but can be 64 bit or itanium
   architecture=None
 
@@ -476,7 +459,7 @@ def run(database):
   bulletinids=set([])
 
   potential=[]
-  
+
   vulns={}
   ids=set([])
 
@@ -490,12 +473,12 @@ def run(database):
   # read from ostext first
   if ARGS.ostext:
     ALERT("getting OS information from command line text")
-        
+
     name=getname(ARGS.ostext)
     release=getrelease(ARGS.ostext)
     servicepack=getservicepack(ARGS.ostext)
     architecture=getarchitecture(ARGS.ostext)
-    
+
     # the os name at least has to be identified
     if not name:
       ALERT("unable to determine the windows version command line text from '%s'" % ARGS.ostext, ALERT.BAD)
@@ -513,37 +496,37 @@ def run(database):
     detected_encoding =  detect_encoding(ARGS.systeminfo)
 
     # insert detected encoding to the front of the list
-    if detected_encoding: 
+    if detected_encoding:
       if ARGS.verbose: ALERT("detected encoding of file as '%s'" % detected_encoding)
       encodings.insert(0, detected_encoding)
 
     cmdfile = None
     cmdoutput = None
-    
+
     # now loop through all encodings, with the detected one first (if it was possible)
     for encoding in encodings:
 
-      if ARGS.verbose: ALERT("  attempting to read with '%s' encoding" % encoding)          
+      if ARGS.verbose: ALERT("  attempting to read with '%s' encoding" % encoding)
 
       # if we can read the file, and read the command output, we are done with the loop
-      try: 
-        cmdfile = io.open(ARGS.systeminfo, "r", encoding=encoding) # throws UnicodeDecodeError      
+      try:
+        cmdfile = io.open(ARGS.systeminfo, "r", encoding=encoding) # throws UnicodeDecodeError
         cmdoutput = cmdfile.readlines() # throws UnicodeError
         break
 
       except (UnicodeError, UnicodeDecodeError) as e:
         ALERT("could not read file using '%s' encoding: %s" % (encoding, e), ALERT.BAD)
-  
+
       # file might not exist
       except:
         ALERT("could not read from input file specified: %s" % ARGS.systeminfo, ALERT.BAD)
-        exit(1)  
+        exit(1)
 
     # general catchall if somehow it was able to keep processing
     if not cmdfile or not cmdoutput:
       ALERT("could not read from input file, or could not detect encoding", ALERT.BAD)
       exit(1)
-    
+
     # file read successfully
     ALERT("systeminfo input file read successfully (%s)" % encoding, ALERT.GOOD)
 
@@ -571,18 +554,18 @@ def run(database):
       if "Microsoft" in haystack and "Windows" in haystack and not release:
         release = getrelease(haystack)
 
-      # similar to OS, there is the words 'Service Pack' 
+      # similar to OS, there is the words 'Service Pack'
       if "Service Pack" in haystack and not servicepack:
         servicepack = getservicepack(haystack)
-      
+
       # get architecture only if -based is in the line, and --ostext hasn't been used
-      if "-based" in haystack and not architecture: 
+      if "-based" in haystack and not architecture:
         architecture=getarchitecture(haystack)
 
     # look for kbs
     if ("KB" in haystack or "]: " in haystack):
       patch=getpatch(haystack)
-      
+
       # if a patch was parsed
       if patch:
         if ARGS.verbose: ALERT("found hotfix %s" % patch)
@@ -596,31 +579,31 @@ def run(database):
     detected_encoding =  detect_encoding(ARGS.systeminfo)
 
     # insert detected encoding to the front of the list
-    if detected_encoding: 
+    if detected_encoding:
       if ARGS.verbose: ALERT("detected encoding of file as '%s'" % detected_encoding)
       encodings.insert(0, detected_encoding)
 
     cmdfile = None
     hotfixesfile = None
-    
+
     # now loop through all encodings, with the detected one first (if it was possible)
     for encoding in encodings:
 
-      if ARGS.verbose: ALERT("  attempting to read with '%s' encoding" % encoding)          
+      if ARGS.verbose: ALERT("  attempting to read with '%s' encoding" % encoding)
 
       # if we can read the file, and read the command output, we are done with the loop
-      try: 
-        cmdfile = io.open(ARGS.hotfixes, "r", encoding=encoding) # throws UnicodeDecodeError      
+      try:
+        cmdfile = io.open(ARGS.hotfixes, "r", encoding=encoding) # throws UnicodeDecodeError
         hotfixesfile = cmdfile.readlines() # throws UnicodeError
         break
 
       except (UnicodeError, UnicodeDecodeError) as e:
         if ARGS.verbose: ALERT("could not read file using '%s' encoding: %s" % (encoding, e), ALERT.BAD)
-  
+
       # file might not exist
       except:
         ALERT("could not read from input file specified: %s" % ARGS.hotfixes, ALERT.BAD)
-        exit(1)  
+        exit(1)
 
     # general catchall if somehow it was able to keep processing
     if not cmdfile or not hotfixesfile:
@@ -629,18 +612,18 @@ def run(database):
 
     # file read successfully
     ALERT("hotfixes input file read successfully (%s)" % encoding, ALERT.GOOD)
-    
+
     # loop through hotfixes file input
     for haystack in hotfixesfile:
       # look for kbs
       if ("KB" in haystack or "]: " in haystack):
         patch=getpatch(haystack)
-        
+
         # if a patch was parsed
         if patch:
           if ARGS.verbose: ALERT("found hotfix %s" % patch)
           hotfixes.add(patch)
-        
+
   if ARGS.verbose:
     ALERT("name: %s; release: %s; servicepack: %s; architecture: %s" % (name, release, servicepack, architecture))
 
@@ -668,7 +651,7 @@ def run(database):
       affected=row[6]
 
       if isaffected(name, release, servicepack, architecture, affected):
-        
+
         # only add the bulletin if it's not already in the list
         if bulletinid not in bulletinids:
           potential.append(row)
@@ -676,18 +659,18 @@ def run(database):
 
           if ARGS.verbose:
             ALERT("%s has been added to potential list '%s'" % (bulletinid, affected))
-            
+
   except csv.Error:
     ALERT('could not parse database file, make sure it is in the proper format', ALERT.BAD)
     exit(1)
-         
-  # there should always be some potential vulns, because of the amount of windows software and false positives  
+
+  # there should always be some potential vulns, because of the amount of windows software and false positives
   if len(bulletinid) == 0:
     ALERT("there are no potential vulnerabilities for, ensure you're searching a valid windows OS", ALERT.BAD)
     exit(1)
 
   ALERT("comparing the %s hotfix(es) against the %s potential bulletins(s) with a database of %s known exploits" % (len(hotfixes), len(bulletinids), getexploit()))
-  
+
   # start removing the vulns because of hotfixes
   for row in list(potential):
 
@@ -697,7 +680,7 @@ def run(database):
     componentkb=row[7]
 
     for hotfix in hotfixes:
-    
+
       # if either the hotfixes match the kb or componentkb columns, and the bulletin is in the list
       # of potential bulletins
       if (hotfix == kb or hotfix == componentkb) and bulletinid in bulletinids:
@@ -708,17 +691,17 @@ def run(database):
         # get the linked ms, this will automatically calculate the superseded by as well
         linkedms = getlinkedms([bulletinid], csv.reader(StringIO.StringIO(database)))
         linkedmsstr = ''
-        
+
         # calculate the pretty string, only care when verbose
         if len(linkedms) > 0:
           for m in linkedms:
             linkedmsstr += ' ' + m
 
         if ARGS.verbose:
-        
+
           if hotfix == kb:
             ALERT("    due to presence of KB%s (Bulletin KB) removing%s bulletin(s)" % (kb, linkedmsstr))
-            
+
           elif componentkb == kb:
             ALERT("    due to presence of KB%s (Component KB) removing%s bulletin(s)" % (componentkb, linkedmsstr))
 
@@ -737,7 +720,7 @@ def run(database):
       if bulletinid in bulletinids and not "elevation of privilege" in impact.lower():
 
         remove = getlinkedms([bulletinid], csv.reader(StringIO.StringIO(database)))
-        
+
         if ARGS.verbose:
           ALERT("   removing %s (total of %s MS ids), because of its impact %s" % (bulletinid, len(remove), impact))
 
@@ -754,13 +737,13 @@ def run(database):
       if bulletinid in bulletinids and not "remote code execution" in impact.lower():
 
         remove = getlinkedms([bulletinid], csv.reader(StringIO.StringIO(database)))
-        
+
         if ARGS.verbose:
           ALERT("   removing %s (total of %s MS ids), because of its impact %s" % (bulletinid, len(remove), impact))
 
         bulletinids = bulletinids.difference(remove)
         potential.remove(row)
-  
+
   # print windows version
   version=getversion(name, release, servicepack, architecture)
 
@@ -786,7 +769,7 @@ def run(database):
             if version == compare_version:
                 if ARGS.verbose: ALERT("Ignoring MS11-011 false positive due to it not affecting '%s'" % compare_version)
                 id = False
-        
+
     for bulletinid in bulletinids:
       if bulletinid == id:
         title = row[5]
@@ -801,30 +784,30 @@ def run(database):
   # msids, the actual data for all of the relevant msids (the row from the CSV)
   alerted = set()
   msids = sorted(vulns, reverse=True)
-  
+
   # loop through the bulletinids which is the set of the actual bulletins that are to
   # be alerted
   for msid in msids:
 
     ## don't alert twice, no matter the case
-    if msid not in alerted: 
+    if msid not in alerted:
 
       # get the msid, exploitability alert rating, and resources
       m,exploit,resources = getexploit(msid)
-      
+
       # only display the message, if the exploit flag isn't used
       # or if it is used, and the alert level is MSF or EXP
       if ARGS.audit or (exploit == ALERT.MSF or exploit == ALERT.EXP):
 
         alert = ALERT.NORMAL
         if exploit: alert = exploit
-      
+
         ALERT("%s: %s (%s) - %s" % (msid, vulns[msid][0], vulns[msid][1], vulns[msid][2]), alert)
         if resources and not ARGS.quiet:
             for resource in resources:
                 ALERT("  %s" % resource)
             ALERT("")
-                
+
         alerted.add(msid)
 
         # only attempt to display linked/sub msids based on cli arguments
@@ -833,7 +816,7 @@ def run(database):
           # linked ms, the children of this msid
           linked = set(getlinkedms([msid], csv.reader(StringIO.StringIO(database))))
           linked = linked.intersection(msids)
-          
+
         # loop through the linked msids, and only display those that qualify and
           # those that have not been alerted yet
           for lmsid in sorted(linked, reverse=True):
@@ -843,9 +826,9 @@ def run(database):
               if ARGS.audit or (lexploit == ALERT.MSF or lexploit == ALERT.EXP):
                 if lexploit: lalert = lexploit
                 ALERT("|_%s: %s (%s) - %s" % (lmsid, vulns[lmsid][0], vulns[lmsid][1], vulns[lmsid][2]), lalert)
-                
+
     # only allow duplicate events to be displayed when command-line args passed
-    if not ARGS.duplicates: alerted.add(lmsid)
+    if not ARGS.duplicates: alerted.add('lmsid')
 
   # end run()
 
@@ -876,7 +859,7 @@ def trace(database):
 
   msids = []
 
-  if ARGS.ostext: 
+  if ARGS.ostext:
     ALERT("getting OS information from command line text")
 
     name=getname(ARGS.ostext)
@@ -900,20 +883,20 @@ def trace(database):
       msid = row[1]
       affected = row[6]
 
-      if msid in lmsids:  
+      if msid in lmsids:
         # debug
         #print ("%s,%s,%s,%s,%s,%s" % (msid, name, release, servicepack, architecture, affected))
 
         if isaffected(name, release, servicepack, architecture, affected) and msid not in msids: msids.append(msid)
-    
- 
+
+
   else: msids = lmsids
 
   ALERT("linked msids %s" % msids, ALERT.GOOD)
 
-  
+
 def patches(database):
-  
+
   kbs = []
 
   # convert to upper
@@ -922,10 +905,10 @@ def patches(database):
 
   # get linked msids, loop through the row
   for row in csv.reader(StringIO.StringIO(database)):
-      
+
     bulletinkb=row[2]
     componentkb=row[7]
-    
+
     # if there's a match
     if bulletinid in row[1]:
       kbs.append(bulletinkb)
@@ -934,19 +917,19 @@ def patches(database):
   ALERT("relevant kbs %s" % (sorted(set(kbs), reverse=True)), ALERT.GOOD)
 
 def getversion(name, release, servicepack, architecture):
-    
+
   version = "Windows " + name
 
   # append release first
   if release: version += " R" + release
-      
+
   # then service pack
   if servicepack: version += " SP" + servicepack
-  
+
   # architecture
   if architecture == "Itanium":  version += " Itanium-based"
   else: version += " %s-bit" % architecture
-    
+
   return version
 
 
@@ -954,7 +937,7 @@ def getname(ostext):
 
   if ostext == False:
     return False
-      
+
   osname=False
 
   osnamearray=[["xp","XP"],
@@ -974,8 +957,8 @@ def getname(ostext):
       osname = needle[1]
 
   # the first loop is a more restrictive detection of the OS name, but it does not detect the following
-  # > Microsoft Windows\xFF7 Entreprise 
-  # so if there is no detection from the first attempt, then search on a more loosely based string of 
+  # > Microsoft Windows\xFF7 Entreprise
+  # so if there is no detection from the first attempt, then search on a more loosely based string of
   # needle and space
   if not osname:
     for needle in osnamearray:
@@ -985,28 +968,28 @@ def getname(ostext):
   return osname
 
 
-def getrelease(ostext):    
-    
+def getrelease(ostext):
+
   if ostext == False:
     return False
-      
+
   osrelease=False
-  
+
   regex="( r| rc|release|rel)[ ]*(\d)"
   m=re.search(regex, ostext.lower())
-  
-  if m and m.group(2):    
+
+  if m and m.group(2):
     osrelease=m.group(2)
-      
+
   return osrelease
-  
+
 def getservicepack(ostext):
-    
+
   if ostext == False:
     return False
-      
+
   servicepack=False
-  
+
   regex="(sp|pack|pack:)[ ]*(\d)"
   m=re.search(regex, ostext.lower())
   if m and m.group(2):
@@ -1018,20 +1001,20 @@ def getservicepack(ostext):
  # architecture defaults to 32, but can be 64-bit
  # or itanium based
 def getarchitecture(ostext):
-  
+
   # default to 32-bit
   architecture="32"
 
   # haystack
   s = ostext.lower()
-  
+
   # attempt to be as flexible as possible
   # matching '64-based', 'x64', ' 64', 'i64', '64bit', '64 bit', '64-bit'
   if ("64-based" in s) or ("x64" in s) or (" 64" in s) or ("i64" in s) or ("64bit" in s) or ("64 bit" in s) or ("64-bit" in s): architecture="64"
 
   # target Itanium with a simple search for 'tani'
   if "tani" in s: architecture="Itanium"
-        
+
   if getname(ostext) == "2008" and getrelease(ostext) == "2" and architecture == "32":
     if ARGS.verbose:
       ALERT("forcing unidentified architecture to 64-bit because OS identified as Windows 2008 R2 (although could be Itanium and wasn't detected?)")
@@ -1041,13 +1024,13 @@ def getarchitecture(ostext):
   if getname(ostext) == "2012" and architecture == "32":
     if ARGS.verbose:
       ALERT("forcing unidentified architecture to 64-bit because OS identified as Windows Server 2012 does not support 32-bit")
-    architecture = "64"  
+    architecture = "64"
 
   return architecture
 
 # itanium build search string
 def getitanium(ostext):
-    
+
   if ostext == False:
     return False
 
@@ -1060,14 +1043,14 @@ def getitanium(ostext):
   return False
 
 def getpatch(ostext):
-    
+
   patch=False
-  
+
   regex="(\d){5,10}"
   m=re.search(regex, ostext.lower())
   if m and m.group():
     patch=m.group()
-  
+
   return patch
 
 # get the bulletin ids from the haystack
@@ -1087,7 +1070,7 @@ def isaffected(name, release, servicepack, architecture, haystack):
 
     # ensure None are set to False
     # example, if getservicepack() does not get called in the systeminfo parsing
-    # then servicepack will be None. this will then fail when comparing to False. 
+    # then servicepack will be None. this will then fail when comparing to False.
     if release == None: release = False
     if servicepack == None: servicepack = False
     if architecture == None: architecture = False
@@ -1106,7 +1089,7 @@ def isaffected(name, release, servicepack, architecture, haystack):
 #    print "%s,%s,%s,%s,%s" % (name, release, servicepack, architecture, (a and r and s))
 
     return a and r and s
-    
+
 # search entire database for linked msids
 # this will also search the superseded column (11)
 def getlinkedms(msids, database):
@@ -1115,23 +1098,23 @@ def getlinkedms(msids, database):
 
   # go through each row in the database
   for row in database:
-  
+
     # base MS-XX
     rowid=row[1]
-    
+
     # superseded MS-XX
-    
+
     # first try row 12, and then row 11 for the supercedes column due to
     # differences in csv and xlrd parsing. this was a bug that might be
     # fixed now
     rowidsuper = getbulletinids(row[12])
-    if rowidsuper == False: rowidsuper=getbulletinids(row[11])  
-    
+    if rowidsuper == False: rowidsuper=getbulletinids(row[11])
+
     rowidsuper = merge_list(rowidsuper)
 
     # loop through each msid for each row
     for msid in msids:
-      
+
       # debug output, what we're working with
       #print "%s,%s,%s" % (msid, rowid, rowidsuper)
       # MS14-053,MS14-053,['MS13-052', 'MS14-009']
@@ -1435,7 +1418,7 @@ def getexploit(msid = 0):
     ['MS09-053', ALERT.MSF],
     ['MS09-050', ALERT.MSF, [
     "https://www.rapid7.com/db/modules/exploit/windows/smb/ms09_050_smb2_negotiate_func_index -- MS09-050 Microsoft SRV2.SYS SMB Negotiate ProcessID Function Table Dereference"]],
-    
+
     ['MS09-050', ALERT.MSF],
     ['MS09-043', ALERT.MSF],
     ['MS09-020', ALERT.MSF],
@@ -1507,19 +1490,19 @@ def getexploit(msid = 0):
     ['MS00-094', ALERT.MSF]
   ]
 
-  # return the count of exploits  
+  # return the count of exploits
   if msid == 0: return len(exploits)
 
   for exploit in exploits:
     if msid == exploit[0]:
       # need 3 values to unpack, in case there are resources
-      if len(exploit) == 2: 
+      if len(exploit) == 2:
           exploit.append(None)
           return exploit
-      
+
       # otherwise there are 3 values
       return exploit
-  
+
   return [False,False,False]
 
 # the update function
@@ -1527,7 +1510,7 @@ def update():
 
   # compute the filenames to be used
   filenames = '%s-mssb' % datetime.datetime.now().strftime('%Y-%m-%d')
-  xlsFile = '%s.%s' % (filenames, 'xls')
+  xlsFile = '%s.%s' % (filenames, 'xlsx')
   csvFile = '%s.%s' % (filenames, 'csv')
 
   # url request opener with user-agent
@@ -1542,7 +1525,7 @@ def update():
   #  exit(1)
   #
   #ALERT("successfully requested base url")
-  
+
   # 2016-02-10, ms changed link to http://download.microsoft.com/download/6/7/3/673E4349-1CA5-40B9-8879-095C72D5B49D/BulletinSearch.xlsx
   #
   # now parse the data, ensure we have an mssb link
@@ -1560,17 +1543,17 @@ def update():
   #else:
   #  ALERT("error finding the ms download url from previous response", ALERT.BAD)
   #  exit(1)
-    
+
   # now download the mssb file, with a random sleep
-  try:    
+  try:
     #sleep(randint(1,3))
     response = opener.open(bulletinUrl)
   except urllib2.URLError:
     ALERT("error getting ms sb url %s" % bulletinUrl, ALERT.BAD)
     exit(1)
-    
+
   bulletinData = response.read()
-  
+
   ALERT("writing to file %s" % xlsFile, ALERT.GOOD)
   f = open(xlsFile, 'wb')
   f.write(bulletinData)
@@ -1578,7 +1561,7 @@ def update():
 
 # modified ALERT class for exploit and metasploit level logging
 class ALERT(object):
-  
+
   def __init__(self, message, level=0, ansi=True):
 
     # default to ansi alerting, if it's detected as windows platform then disable
@@ -1587,42 +1570,42 @@ class ALERT(object):
     good = '[+]'
     bad = '[-]'
     normal = '[*]'
-  
+
     msf = '[M]'
     exploit = '[E]'
-    
+
     if ansi == True:
       if level == ALERT.GOOD: print("%s%s%s" % ('\033[1;32m',good,"\033[0;0m"), end=''),
       elif level == ALERT.BAD: print("%s%s%s" % ('\033[1;31m',bad,"\033[0;0m"), end=''),
       elif level == ALERT.MSF: print("%s%s%s" % ('\033[1;32m',msf,"\033[0;0m"), end=''),
       elif level == ALERT.EXP: print("%s%s%s" % ('\033[1;32m',exploit,"\033[0;0m"), end=''),
       else: print("%s%s%s" % ('\033[1;34m',normal,"\033[0;0m"), end=''),
-      
+
     else:
       if level == ALERT.GOOD: print('%s' % good, end=''),
       elif level == ALERT.BAD: print('%s' % bad, end=''),
       elif level == ALERT.MSF: print('%s' % msf, end=''),
       elif level == ALERT.EXP: print('%s' % exploit, end=''),
       else: print('%s' % normal, end=''),
-      
+
     print(message)
-  
+
   @staticmethod
   @property
   def BAD(self): return -1
-    
+
   @staticmethod
   @property
   def NORMAL(self): return 0
-    
+
   @staticmethod
   @property
   def GOOD(self): return 1
-    
+
   @staticmethod
   @property
   def MSF(self): return 2
-    
+
   @staticmethod
   @property
   def EXP(self): return 3
