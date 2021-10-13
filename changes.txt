@@ -1,0 +1,6 @@
+2021.10.13 2354
+
+- imported urllib.error
+- using urllib.error.URLError instead of urllib2.URLError
+- https://docs.python.org/3/library/urllib.error.html
+

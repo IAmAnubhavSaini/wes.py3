@@ -315,6 +315,7 @@ from io import StringIO
 import os
 import datetime
 import urllib.request
+import urllib.error
 import io
 from random import randint
 from time import sleep
@@ -1548,7 +1549,7 @@ def update():
   try:
     #sleep(randint(1,3))
     response = opener.open(bulletinUrl)
-  except urllib2.URLError:
+  except urllib.error.URLError:
     ALERT("error getting ms sb url %s" % bulletinUrl, ALERT.BAD)
     exit(1)
 
