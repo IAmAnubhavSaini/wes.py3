@@ -112,3 +112,14 @@ Sample output:
 ## License
 
 GPL 3.0
+
+## References
+
+- [original wes](https://github.com/AonCyberLabs/Windows-Exploit-Suggester)
+- [wes introduction blog post](https://blog.gdssecurity.com/labs/2014/7/11/introducing-windows-exploit-suggester.html)
+- [les.pl blog post](https://penturalabs.wordpress.com/2013/08/26/linux-exploit-suggester/)
+- [les](https://github.com/mzet-/linux-exploit-suggester)
+- [les2](https://github.com/jondonas/linux-exploit-suggester-2)
+- [MS vulnerability database](https://msrc.microsoft.com/update-guide/vulnerability)
+- [cvedetails](https://www.cvedetails.com/vulnerability-list/vendor_id-26/Microsoft.html)
+- [cve.mitre](https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=microsoft)
